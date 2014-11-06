@@ -235,7 +235,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 find_best_connection(Tid, Max_pipe) ->
     ets:safe_fixtable(Tid, true),
-    Res = find_best_connection(ets:first(Tid), Tid, Max_pipe),
+    random:seed(),
+    Res = find_best_connection(ets:lookup_element(Tid, ets:first(Tid), random:uniform(1023)), Tid, Max_pipe),
     ets:safe_fixtable(Tid, false),
     Res.
 
