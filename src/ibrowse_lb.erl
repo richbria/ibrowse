@@ -233,10 +233,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+%%
+
+get_rand_conn_in_table(Tid) ->
+    Offset = random:uniform(100),
+    get_offset_conn_in_table(Tid, ets:first(Tid), Offset).
+
+get_offset_conn_in_table(_Tid, Pid, Offset) when Offset == 0 ->
+    Pid;
+
+get_offset_conn_in_table(Tid, Pid, Offset) ->
+    get_offset_conn_in_table(Tid, ets:next(Tid, Pid), Offset-1). 
+
 find_best_connection(Tid, Max_pipe) ->
     ets:safe_fixtable(Tid, true),
-    random:seed(),
-    Res = find_best_connection(ets:lookup_element(Tid, ets:first(Tid), random:uniform(1023)), Tid, Max_pipe),
+    Res = find_best_connection(get_rand_conn_in_table(Tid), Tid, Max_pipe),
     ets:safe_fixtable(Tid, false),
     Res.
 
