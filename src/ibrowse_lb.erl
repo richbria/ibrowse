@@ -128,7 +128,7 @@ handle_call({spawn_connection, _Url, Max_sess, Max_pipe, _, _}, _From,
 	    #state{num_cur_sessions = Num} = State)
     when Num >= Max_sess ->
     State_1 = maybe_create_ets(State),
-    Reply = find_best_connection(State_1#state.ets_tid, Max_pipe),
+    Reply = find_best_connection(State_1, Max_pipe),
     {reply, Reply, State_1#state{max_sessions = Max_sess,
                                  max_pipeline_size = Max_pipe}};
 
@@ -235,19 +235,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%
 
-get_rand_conn_in_table(Tid) ->
-    Offset = random:uniform(100),
+get_rand_conn_in_table(Tid, Max_Sessions) ->
+    Offset = random:uniform(Max_Sessions),
     get_offset_conn_in_table(Tid, ets:first(Tid), Offset).
 
-get_offset_conn_in_table(_Tid, Pid, Offset) when Offset == 0 ->
+get_offset_conn_in_table(_Tid, Pid, 0) ->
     Pid;
 
-get_offset_conn_in_table(Tid, Pid, Offset) ->
-    get_offset_conn_in_table(Tid, ets:next(Tid, Pid), Offset-1). 
+get_offset_conn_in_table(Tid, '$end_of_table', _) ->
+    ets:first(Tid);
 
-find_best_connection(Tid, Max_pipe) ->
+get_offset_conn_in_table(Tid, Pid, Offset) ->
+    get_offset_conn_in_table(Tid, ets:next(Tid, Pid), Offset-1).
+
+find_best_connection(#state{ets_tid = Tid, max_sessions = Max_Sessions}, Max_pipe) ->
     ets:safe_fixtable(Tid, true),
-    Res = find_best_connection(get_rand_conn_in_table(Tid), Tid, Max_pipe),
+    Res = find_best_connection(get_rand_conn_in_table(Tid, Max_Sessions), Tid, Max_pipe),
     ets:safe_fixtable(Tid, false),
     Res.
 
